@@ -43,13 +43,22 @@ const getNextDays = () => {
   return days;
 };
 
+interface LaundryBooking {
+  id: string;
+  user_id: string;
+  machine: string;
+  time_slot: string;
+  booking_date: string;
+  status: string;
+}
+
 const LaundryPage = () => {
   const [selectedDate, setSelectedDate] = useState(getNextDays()[0].value);
   const [selectedMachine, setSelectedMachine] = useState("");
   const [selectedSlot, setSelectedSlot] = useState("");
   const [loading, setLoading] = useState(false);
   const [bookedSlots, setBookedSlots] = useState<string[]>([]);
-  const [myBookings, setMyBookings] = useState<any[]>([]);
+  const [myBookings, setMyBookings] = useState<LaundryBooking[]>([]);
 
   const days = getNextDays();
 
@@ -64,7 +73,7 @@ const LaundryPage = () => {
     const { data: bookings } = await supabase
       .from("laundry_bookings")
       .select("*")
-      .eq("booking_date", selectedDate);
+      .eq("booking_date", selectedDate) as { data: LaundryBooking[] | null };
 
     if (bookings) {
       setBookedSlots(bookings.map(b => `${b.machine}-${b.time_slot}`));
@@ -88,7 +97,7 @@ const LaundryPage = () => {
         booking_date: selectedDate,
         machine: selectedMachine,
         time_slot: selectedSlot,
-      });
+      } as any);
 
       if (error) throw error;
       toast.success("Laundry slot booked successfully!");

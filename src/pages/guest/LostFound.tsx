@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Search, Plus, MapPin, Calendar, User, CheckCircle, Clock, Upload } from "lucide-react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -15,12 +15,11 @@ interface LostItem {
   id: string;
   item_name: string;
   description: string;
-  found_location: string;
-  finder_name: string;
-  finder_contact: string;
+  location_found: string;
   image_url?: string;
-  status: "unclaimed" | "claimed";
+  status: "found" | "claimed";
   created_at: string;
+  user_id: string;
 }
 
 const LostFoundPage = () => {
@@ -33,8 +32,6 @@ const LostFoundPage = () => {
   const [itemName, setItemName] = useState("");
   const [description, setDescription] = useState("");
   const [foundLocation, setFoundLocation] = useState("");
-  const [finderContact, setFinderContact] = useState("");
-  const [imageFile, setImageFile] = useState<File | null>(null);
 
   useEffect(() => {
     fetchItems();
@@ -45,7 +42,7 @@ const LostFoundPage = () => {
       const { data, error } = await supabase
         .from("lost_found_items")
         .select("*")
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: false }) as { data: LostItem[] | null; error: any };
 
       if (error) throw error;
       setItems(data || []);
@@ -69,35 +66,12 @@ const LostFoundPage = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
-      let imageUrl = null;
-
-      // Upload image if provided
-      if (imageFile) {
-        const fileExt = imageFile.name.split('.').pop();
-        const fileName = `${Date.now()}.${fileExt}`;
-        const { data: uploadData, error: uploadError } = await supabase.storage
-          .from("lost-found-images")
-          .upload(fileName, imageFile);
-
-        if (uploadError) throw uploadError;
-
-        const { data: urlData } = supabase.storage
-          .from("lost-found-images")
-          .getPublicUrl(fileName);
-        
-        imageUrl = urlData.publicUrl;
-      }
-
       const { error } = await supabase.from("lost_found_items").insert({
         user_id: user.id,
         item_name: itemName,
         description,
-        found_location: foundLocation,
-        finder_name: user.user_metadata?.name || "Anonymous",
-        finder_contact: finderContact,
-        image_url: imageUrl,
-        status: "unclaimed",
-      });
+        location_found: foundLocation,
+      } as any);
 
       if (error) throw error;
       
@@ -116,8 +90,6 @@ const LostFoundPage = () => {
     setItemName("");
     setDescription("");
     setFoundLocation("");
-    setFinderContact("");
-    setImageFile(null);
   };
 
   return (
@@ -144,14 +116,16 @@ const LostFoundPage = () => {
           </div>
         ) : items.length === 0 ? (
           <Card variant="elevated" className="text-center py-12">
-            <Search className="w-12 h-12 mx-auto mb-4 text-muted-foreground opacity-50" />
-            <h3 className="text-lg font-semibold mb-2">No Items Posted</h3>
-            <p className="text-muted-foreground mb-4">
-              Found something that doesn't belong to you? Help someone find it!
-            </p>
-            <Button variant="outline" onClick={() => setIsDialogOpen(true)}>
-              Report Found Item
-            </Button>
+            <CardContent>
+              <Search className="w-12 h-12 mx-auto mb-4 text-muted-foreground opacity-50" />
+              <h3 className="text-lg font-semibold mb-2">No Items Posted</h3>
+              <p className="text-muted-foreground mb-4">
+                Found something that doesn't belong to you? Help someone find it!
+              </p>
+              <Button variant="outline" onClick={() => setIsDialogOpen(true)}>
+                Report Found Item
+              </Button>
+            </CardContent>
           </Card>
         ) : (
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -214,22 +188,13 @@ const LostFoundPage = () => {
                     <div className="space-y-2 text-sm">
                       <div className="flex items-center gap-2 text-muted-foreground">
                         <MapPin className="w-4 h-4" />
-                        <span>Found at: {item.found_location}</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-muted-foreground">
-                        <User className="w-4 h-4" />
-                        <span>By: {item.finder_name}</span>
+                        <span>Found at: {item.location_found}</span>
                       </div>
                       <div className="flex items-center gap-2 text-muted-foreground">
                         <Calendar className="w-4 h-4" />
                         <span>{new Date(item.created_at).toLocaleDateString()}</span>
                       </div>
                     </div>
-                    {item.finder_contact && item.status === "unclaimed" && (
-                      <div className="mt-3 pt-3 border-t border-border">
-                        <p className="text-sm font-medium">Contact: {item.finder_contact}</p>
-                      </div>
-                    )}
                   </CardContent>
                 </Card>
               </motion.div>
@@ -278,35 +243,6 @@ const LostFoundPage = () => {
                 value={foundLocation}
                 onChange={(e) => setFoundLocation(e.target.value)}
               />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="finderContact">Your Contact (optional)</Label>
-              <Input
-                id="finderContact"
-                placeholder="Phone or room number"
-                value={finderContact}
-                onChange={(e) => setFinderContact(e.target.value)}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>Upload Photo</Label>
-              <div className="border-2 border-dashed border-border rounded-xl p-4 text-center">
-                <input
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  id="image-upload"
-                  onChange={(e) => setImageFile(e.target.files?.[0] || null)}
-                />
-                <label htmlFor="image-upload" className="cursor-pointer">
-                  <Upload className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
-                  <p className="text-sm text-muted-foreground">
-                    {imageFile ? imageFile.name : "Click to upload image"}
-                  </p>
-                </label>
-              </div>
             </div>
 
             <DialogFooter>

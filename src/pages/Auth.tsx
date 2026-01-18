@@ -40,7 +40,7 @@ const Auth = () => {
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
-  const [occupation, setOccupation] = useState<"student" | "working">("student");
+  const [occupation, setOccupation] = useState<"student" | "work">("student");
   const [course, setCourse] = useState("");
   const [year, setYear] = useState("");
   const [workType, setWorkType] = useState("");
@@ -55,8 +55,32 @@ const Auth = () => {
     };
     checkSession();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (session) {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === "SIGNED_IN" && session) {
+        // Create profile after signup
+        const metadata = session.user.user_metadata;
+        if (metadata?.name) {
+          const { error } = await supabase.from("profiles").insert({
+            user_id: session.user.id,
+            name: metadata.name,
+            mobile: metadata.phone || "",
+            occupation: metadata.occupation || "student",
+            course: metadata.course,
+            year: metadata.year,
+            work_type: metadata.work_type,
+          } as any);
+          
+          if (error && !error.message.includes("duplicate")) {
+            console.error("Error creating profile:", error);
+          }
+
+          // Create user role
+          await supabase.from("user_roles").insert({
+            user_id: session.user.id,
+            role: metadata.role || "guest",
+          } as any);
+        }
+        
         navigate(role === "head" ? "/head/dashboard" : "/guest/dashboard");
       }
     });
@@ -84,7 +108,7 @@ const Auth = () => {
           throw new Error("Please select your course and year");
         }
         
-        if (role === "guest" && occupation === "working" && !workType.trim()) {
+        if (role === "guest" && occupation === "work" && !workType.trim()) {
           throw new Error("Please enter your work type");
         }
       }
@@ -106,7 +130,7 @@ const Auth = () => {
               occupation: role === "guest" ? occupation : undefined,
               course: role === "guest" && occupation === "student" ? course : undefined,
               year: role === "guest" && occupation === "student" ? year : undefined,
-              work_type: role === "guest" && occupation === "working" ? workType : undefined,
+              work_type: role === "guest" && occupation === "work" ? workType : undefined,
             }
           }
         });
@@ -202,7 +226,7 @@ const Auth = () => {
                           <Label>Occupation</Label>
                           <RadioGroup
                             value={occupation}
-                            onValueChange={(value: "student" | "working") => setOccupation(value)}
+                            onValueChange={(value: "student" | "work") => setOccupation(value)}
                             className="flex gap-4"
                           >
                             <div className="flex items-center space-x-2">
@@ -212,8 +236,8 @@ const Auth = () => {
                               </Label>
                             </div>
                             <div className="flex items-center space-x-2">
-                              <RadioGroupItem value="working" id="working" />
-                              <Label htmlFor="working" className="flex items-center gap-2 cursor-pointer">
+                              <RadioGroupItem value="work" id="work" />
+                              <Label htmlFor="work" className="flex items-center gap-2 cursor-pointer">
                                 <Briefcase className="w-4 h-4" /> Working
                               </Label>
                             </div>
@@ -251,7 +275,7 @@ const Auth = () => {
                           </div>
                         )}
 
-                        {occupation === "working" && (
+                        {occupation === "work" && (
                           <div className="space-y-2">
                             <Label htmlFor="workType">Work Type</Label>
                             <div className="relative">

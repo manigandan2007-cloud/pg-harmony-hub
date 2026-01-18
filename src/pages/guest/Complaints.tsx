@@ -12,7 +12,7 @@ import { toast } from "sonner";
 
 interface Complaint {
   id: string;
-  title: string;
+  category: string;
   description: string;
   room_number: string;
   status: "pending" | "in_progress" | "resolved";
@@ -30,7 +30,7 @@ const ComplaintsPage = () => {
   const [complaints, setComplaints] = useState<Complaint[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [title, setTitle] = useState("");
+  const [category, setCategory] = useState("");
   const [description, setDescription] = useState("");
   const [roomNumber, setRoomNumber] = useState("");
 
@@ -47,7 +47,7 @@ const ComplaintsPage = () => {
         .from("complaints")
         .select("*")
         .eq("user_id", user.id)
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: false }) as { data: Complaint[] | null; error: any };
 
       if (error) throw error;
       setComplaints(data || []);
@@ -61,7 +61,7 @@ const ComplaintsPage = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!title.trim() || !description.trim() || !roomNumber.trim()) {
+    if (!category.trim() || !description.trim() || !roomNumber.trim()) {
       toast.error("Please fill all fields");
       return;
     }
@@ -73,15 +73,14 @@ const ComplaintsPage = () => {
 
       const { error } = await supabase.from("complaints").insert({
         user_id: user.id,
-        title,
+        category,
         description,
         room_number: roomNumber,
-        status: "pending",
-      });
+      } as any);
 
       if (error) throw error;
       toast.success("Complaint submitted successfully!");
-      setTitle("");
+      setCategory("");
       setDescription("");
       setRoomNumber("");
       fetchComplaints();
@@ -127,12 +126,12 @@ const ComplaintsPage = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="title">Subject</Label>
+                  <Label htmlFor="category">Category</Label>
                   <Input
-                    id="title"
-                    placeholder="Brief description of the issue"
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
+                    id="category"
+                    placeholder="e.g. Electrical, Plumbing, Maintenance"
+                    value={category}
+                    onChange={(e) => setCategory(e.target.value)}
                   />
                 </div>
                 <div className="space-y-2">
@@ -167,8 +166,10 @@ const ComplaintsPage = () => {
               </div>
             ) : complaints.length === 0 ? (
               <Card variant="elevated" className="text-center py-8">
-                <MessageSquare className="w-10 h-10 mx-auto mb-3 text-muted-foreground opacity-50" />
-                <p className="text-muted-foreground">No complaints submitted yet</p>
+                <CardContent>
+                  <MessageSquare className="w-10 h-10 mx-auto mb-3 text-muted-foreground opacity-50" />
+                  <p className="text-muted-foreground">No complaints submitted yet</p>
+                </CardContent>
               </Card>
             ) : (
               <div className="space-y-3">
@@ -183,7 +184,7 @@ const ComplaintsPage = () => {
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: index * 0.05 }}
                     >
-                      <Card variant="default">
+                      <Card>
                         <CardContent className="p-4">
                           <div className="flex items-start justify-between gap-4">
                             <div className="flex-1">
@@ -196,7 +197,7 @@ const ComplaintsPage = () => {
                                   {status.label}
                                 </span>
                               </div>
-                              <h3 className="font-semibold">{complaint.title}</h3>
+                              <h3 className="font-semibold">{complaint.category}</h3>
                               <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
                                 {complaint.description}
                               </p>
