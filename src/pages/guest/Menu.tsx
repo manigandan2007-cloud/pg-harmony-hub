@@ -10,6 +10,7 @@ interface MenuItem {
   date: string;
   breakfast: string[];
   lunch: string[];
+  snacks: string[];
   dinner: string[];
 }
 
@@ -41,10 +42,20 @@ const MenuPage = () => {
         .from("daily_menus")
         .select("*")
         .eq("date", today)
-        .maybeSingle();
+        .maybeSingle() as { data: any; error: any };
 
       if (error) throw error;
-      setTodayMenu(data);
+      
+      if (data) {
+        setTodayMenu({
+          id: data.id,
+          date: data.date,
+          breakfast: data.breakfast || [],
+          lunch: data.lunch || [],
+          snacks: data.snacks || [],
+          dinner: data.dinner || [],
+        });
+      }
     } catch (error) {
       console.error("Error fetching menu:", error);
     } finally {
@@ -133,11 +144,13 @@ const MenuPage = () => {
           </div>
         ) : (
           <Card variant="elevated" className="text-center py-12">
-            <Utensils className="w-12 h-12 mx-auto mb-4 text-muted-foreground opacity-50" />
-            <h3 className="text-lg font-semibold mb-2">No Menu Posted</h3>
-            <p className="text-muted-foreground">
-              Today's menu hasn't been posted yet. Check back later!
-            </p>
+            <CardContent>
+              <Utensils className="w-12 h-12 mx-auto mb-4 text-muted-foreground opacity-50" />
+              <h3 className="text-lg font-semibold mb-2">No Menu Posted</h3>
+              <p className="text-muted-foreground">
+                Today's menu hasn't been posted yet. Check back later!
+              </p>
+            </CardContent>
           </Card>
         )}
 

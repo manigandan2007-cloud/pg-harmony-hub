@@ -3,7 +3,6 @@ import { motion } from "framer-motion";
 import { BarChart3, Star, ThumbsUp } from "lucide-react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -33,7 +32,7 @@ const FoodPollPage = () => {
       const { data: pollsData, error } = await supabase
         .from("food_polls")
         .select("*, food_poll_votes(*), food_poll_ratings(*)")
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: false }) as { data: any[] | null; error: any };
 
       if (error) throw error;
 
@@ -93,13 +92,13 @@ const FoodPollPage = () => {
         .select("*")
         .eq("poll_id", pollId)
         .eq("user_id", user.id)
-        .maybeSingle();
+        .maybeSingle() as { data: any };
 
       if (existingVote) {
         // Update vote
         await supabase
           .from("food_poll_votes")
-          .update({ option })
+          .update({ option } as any)
           .eq("id", existingVote.id);
       } else {
         // Insert new vote
@@ -107,7 +106,7 @@ const FoodPollPage = () => {
           poll_id: pollId,
           user_id: user.id,
           option,
-        });
+        } as any);
       }
 
       toast.success("Vote recorded!");
@@ -127,19 +126,19 @@ const FoodPollPage = () => {
         .select("*")
         .eq("poll_id", pollId)
         .eq("user_id", user.id)
-        .maybeSingle();
+        .maybeSingle() as { data: any };
 
       if (existingRating) {
         await supabase
           .from("food_poll_ratings")
-          .update({ rating })
+          .update({ rating } as any)
           .eq("id", existingRating.id);
       } else {
         await supabase.from("food_poll_ratings").insert({
           poll_id: pollId,
           user_id: user.id,
           rating,
-        });
+        } as any);
       }
 
       toast.success("Rating submitted!");
@@ -176,9 +175,11 @@ const FoodPollPage = () => {
           </div>
         ) : polls.length === 0 ? (
           <Card variant="elevated" className="text-center py-12">
-            <BarChart3 className="w-12 h-12 mx-auto mb-4 text-muted-foreground opacity-50" />
-            <h3 className="text-lg font-semibold mb-2">No Active Polls</h3>
-            <p className="text-muted-foreground">Check back later for new food polls!</p>
+            <CardContent>
+              <BarChart3 className="w-12 h-12 mx-auto mb-4 text-muted-foreground opacity-50" />
+              <h3 className="text-lg font-semibold mb-2">No Active Polls</h3>
+              <p className="text-muted-foreground">Check back later for new food polls!</p>
+            </CardContent>
           </Card>
         ) : (
           <div className="grid gap-6">

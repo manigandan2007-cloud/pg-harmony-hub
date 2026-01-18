@@ -1,18 +1,18 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Receipt, Zap, Droplets, Calendar, Download } from "lucide-react";
+import { Receipt, Zap, Droplets, Calendar } from "lucide-react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 
 interface Bill {
   id: string;
-  type: "electricity" | "water";
+  bill_type: "electricity" | "water";
   amount: number;
   month: string;
   year: number;
   due_date: string;
+  status: string;
   created_at: string;
 }
 
@@ -39,10 +39,14 @@ const BillsPage = () => {
 
   const fetchBills = async () => {
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
       const { data, error } = await supabase
         .from("bills")
         .select("*")
-        .order("created_at", { ascending: false });
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false }) as { data: Bill[] | null; error: any };
 
       if (error) throw error;
       setBills(data || []);
@@ -54,12 +58,12 @@ const BillsPage = () => {
   };
 
   const totalElectricity = bills
-    .filter((b) => b.type === "electricity")
-    .reduce((sum, b) => sum + b.amount, 0);
+    .filter((b) => b.bill_type === "electricity")
+    .reduce((sum, b) => sum + Number(b.amount), 0);
 
   const totalWater = bills
-    .filter((b) => b.type === "water")
-    .reduce((sum, b) => sum + b.amount, 0);
+    .filter((b) => b.bill_type === "water")
+    .reduce((sum, b) => sum + Number(b.amount), 0);
 
   return (
     <DashboardLayout role="guest">
@@ -120,16 +124,18 @@ const BillsPage = () => {
           </div>
         ) : bills.length === 0 ? (
           <Card variant="elevated" className="text-center py-12">
-            <Receipt className="w-12 h-12 mx-auto mb-4 text-muted-foreground opacity-50" />
-            <h3 className="text-lg font-semibold mb-2">No Bills Posted</h3>
-            <p className="text-muted-foreground">Bills will appear here once posted by the PG Head</p>
+            <CardContent>
+              <Receipt className="w-12 h-12 mx-auto mb-4 text-muted-foreground opacity-50" />
+              <h3 className="text-lg font-semibold mb-2">No Bills Posted</h3>
+              <p className="text-muted-foreground">Bills will appear here once posted by the PG Head</p>
+            </CardContent>
           </Card>
         ) : (
           <div className="space-y-4">
             <h2 className="text-lg font-semibold">Recent Bills</h2>
             <div className="grid gap-4">
               {bills.map((bill, index) => {
-                const config = billTypeConfig[bill.type];
+                const config = billTypeConfig[bill.bill_type];
                 const Icon = config.icon;
 
                 return (
@@ -154,7 +160,7 @@ const BillsPage = () => {
                             </div>
                           </div>
                           <div className="text-right">
-                            <p className="text-xl font-bold">₹{bill.amount.toLocaleString()}</p>
+                            <p className="text-xl font-bold">₹{Number(bill.amount).toLocaleString()}</p>
                             <p className="text-xs text-muted-foreground flex items-center gap-1">
                               <Calendar className="w-3 h-3" />
                               Due: {new Date(bill.due_date).toLocaleDateString()}
