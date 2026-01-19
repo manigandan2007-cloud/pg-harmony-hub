@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
-import { Search, Plus, MapPin, Calendar, User, CheckCircle, Clock, Upload } from "lucide-react";
+import { Search, Plus, MapPin, Calendar, CheckCircle, Clock } from "lucide-react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,8 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import ImageCaptureDialog from "@/components/ImageCaptureDialog";
+import ImageUploadPreview from "@/components/ImageUploadPreview";
 
 interface LostItem {
   id: string;
@@ -32,6 +34,13 @@ const LostFoundPage = () => {
   const [itemName, setItemName] = useState("");
   const [description, setDescription] = useState("");
   const [foundLocation, setFoundLocation] = useState("");
+  
+  // Image capture state
+  const [isWebcamOpen, setIsWebcamOpen] = useState(false);
+  const [stream, setStream] = useState<MediaStream | null>(null);
+  const [capturedImage, setCapturedImage] = useState<string | null>(null);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
 
   useEffect(() => {
     fetchItems();
@@ -53,6 +62,90 @@ const LostFoundPage = () => {
     }
   };
 
+  const openWebcam = async () => {
+    try {
+      const mediaStream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "environment" },
+      });
+      setStream(mediaStream);
+      setIsWebcamOpen(true);
+    } catch (error: any) {
+      toast.error("Could not access camera: " + error.message);
+    }
+  };
+
+  const closeWebcam = () => {
+    if (stream) {
+      stream.getTracks().forEach((track) => track.stop());
+      setStream(null);
+    }
+    setIsWebcamOpen(false);
+  };
+
+  const handleCapture = () => {
+    const video = document.querySelector("video");
+    if (!video) return;
+
+    const canvas = document.createElement("canvas");
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    ctx.drawImage(video, 0, 0);
+    const dataUrl = canvas.toDataURL("image/jpeg", 0.8);
+    setCapturedImage(dataUrl);
+
+    canvas.toBlob(
+      (blob) => {
+        if (blob) {
+          const file = new File([blob], `capture-${Date.now()}.jpg`, {
+            type: "image/jpeg",
+          });
+          setImageFile(file);
+        }
+      },
+      "image/jpeg",
+      0.8
+    );
+
+    closeWebcam();
+  };
+
+  const handleFileSelect = (file: File) => {
+    setImageFile(file);
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      setCapturedImage(e.target?.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const clearImage = () => {
+    setCapturedImage(null);
+    setImageFile(null);
+  };
+
+  const uploadImage = async (file: File): Promise<string | null> => {
+    const fileExt = file.name.split(".").pop();
+    const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+    
+    const { error } = await supabase.storage
+      .from("lost-found-images")
+      .upload(fileName, file);
+
+    if (error) {
+      console.error("Upload error:", error);
+      return null;
+    }
+
+    const { data: { publicUrl } } = supabase.storage
+      .from("lost-found-images")
+      .getPublicUrl(fileName);
+
+    return publicUrl;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -66,11 +159,17 @@ const LostFoundPage = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
+      let imageUrl: string | null = null;
+      if (imageFile) {
+        imageUrl = await uploadImage(imageFile);
+      }
+
       const { error } = await supabase.from("lost_found_items").insert({
         user_id: user.id,
         item_name: itemName,
         description,
         location_found: foundLocation,
+        image_url: imageUrl,
       } as any);
 
       if (error) throw error;
@@ -90,6 +189,8 @@ const LostFoundPage = () => {
     setItemName("");
     setDescription("");
     setFoundLocation("");
+    setCapturedImage(null);
+    setImageFile(null);
   };
 
   return (
@@ -215,6 +316,16 @@ const LostFoundPage = () => {
           
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
+              <Label>Add Photo (Optional)</Label>
+              <ImageUploadPreview
+                capturedImage={capturedImage}
+                onClear={clearImage}
+                onOpenWebcam={openWebcam}
+                onFileSelect={handleFileSelect}
+              />
+            </div>
+
+            <div className="space-y-2">
               <Label htmlFor="itemName">Item Name *</Label>
               <Input
                 id="itemName"
@@ -256,6 +367,14 @@ const LostFoundPage = () => {
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* Webcam Dialog */}
+      <ImageCaptureDialog
+        isOpen={isWebcamOpen}
+        onClose={closeWebcam}
+        stream={stream}
+        onCapture={handleCapture}
+      />
     </DashboardLayout>
   );
 };
