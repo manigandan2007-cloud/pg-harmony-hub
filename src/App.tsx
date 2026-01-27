@@ -17,6 +17,7 @@ import Complaints from "./pages/guest/Complaints";
 import LostFound from "./pages/guest/LostFound";
 import Bills from "./pages/guest/Bills";
 import Residents from "./pages/guest/Residents";
+import Maintenance from "./pages/guest/Maintenance";
 
 // Head Pages
 import HeadDashboard from "./pages/head/Dashboard";
@@ -26,6 +27,7 @@ import HeadLostFound from "./pages/head/LostFound";
 import HeadComplaints from "./pages/head/Complaints";
 import HeadMenu from "./pages/head/Menu";
 import HeadPolls from "./pages/head/Polls";
+import HeadMaintenance from "./pages/head/Maintenance";
 
 const queryClient = new QueryClient();
 
@@ -49,6 +51,7 @@ const App = () => (
           <Route path="/guest/lost-found" element={<LostFound />} />
           <Route path="/guest/bills" element={<Bills />} />
           <Route path="/guest/residents" element={<Residents />} />
+          <Route path="/guest/maintenance" element={<Maintenance />} />
           
           {/* Head Routes */}
           <Route path="/head/dashboard" element={<HeadDashboard />} />
@@ -58,6 +61,7 @@ const App = () => (
           <Route path="/head/complaints" element={<HeadComplaints />} />
           <Route path="/head/menu" element={<HeadMenu />} />
           <Route path="/head/polls" element={<HeadPolls />} />
+          <Route path="/head/maintenance" element={<HeadMaintenance />} />
           
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
