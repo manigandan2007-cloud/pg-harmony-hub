@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Eye, EyeOff, Building2, Users, Mail, Lock, Phone, User, ArrowLeft, GraduationCap, Briefcase } from "lucide-react";
+import { Eye, EyeOff, Building2, Users, Mail, Lock, Phone, User, ArrowLeft, GraduationCap, Briefcase, KeyRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -44,6 +44,7 @@ const Auth = () => {
   const [course, setCourse] = useState("");
   const [year, setYear] = useState("");
   const [workType, setWorkType] = useState("");
+  const [inviteCode, setInviteCode] = useState("");
 
   useEffect(() => {
     // Check if already logged in
@@ -111,6 +112,25 @@ const Auth = () => {
         if (role === "guest" && occupation === "work" && !workType.trim()) {
           throw new Error("Please enter your work type");
         }
+
+        // Validate invite code for head registration
+        if (role === "head") {
+          if (!inviteCode.trim()) {
+            throw new Error("Please enter your admin invite code");
+          }
+          
+          // Validate the invite code via database function
+          const { data: isValid, error: validateError } = await supabase
+            .rpc('validate_head_invite_code', { invite_code: inviteCode.trim() });
+          
+          if (validateError) {
+            throw new Error("Failed to validate invite code");
+          }
+          
+          if (!isValid) {
+            throw new Error("Invalid or expired invite code");
+          }
+        }
       }
 
       if (isLogin) {
@@ -118,7 +138,7 @@ const Auth = () => {
         if (error) throw error;
         toast.success("Welcome back!");
       } else {
-        const { error } = await supabase.auth.signUp({
+        const { data: signUpData, error } = await supabase.auth.signUp({
           email,
           password,
           options: {
@@ -135,6 +155,15 @@ const Auth = () => {
           }
         });
         if (error) throw error;
+        
+        // Consume the invite code after successful head registration
+        if (role === "head" && signUpData.user) {
+          await supabase.rpc('consume_head_invite_code', { 
+            invite_code: inviteCode.trim(),
+            user_uuid: signUpData.user.id
+          });
+        }
+        
         toast.success("Account created successfully!");
       }
     } catch (error: any) {
@@ -192,6 +221,26 @@ const Auth = () => {
                     exit={{ opacity: 0, height: 0 }}
                     className="space-y-4"
                   >
+                    {/* Admin Invite Code - Only for Head registration */}
+                    {role === "head" && (
+                      <div className="space-y-2">
+                        <Label htmlFor="inviteCode">Admin Invite Code</Label>
+                        <div className="relative">
+                          <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                          <Input
+                            id="inviteCode"
+                            placeholder="Enter your admin invite code"
+                            value={inviteCode}
+                            onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
+                            className="pl-10 font-mono"
+                          />
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          Contact the existing PG admin to get an invite code
+                        </p>
+                      </div>
+                    )}
+
                     <div className="space-y-2">
                       <Label htmlFor="name">Full Name</Label>
                       <div className="relative">

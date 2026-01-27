@@ -219,6 +219,33 @@ export type Database = {
         }
         Relationships: []
       }
+      head_invite_codes: {
+        Row: {
+          code: string
+          created_at: string
+          id: string
+          is_active: boolean
+          used_at: string | null
+          used_by: string | null
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          used_at?: string | null
+          used_by?: string | null
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          used_at?: string | null
+          used_by?: string | null
+        }
+        Relationships: []
+      }
       laundry_bookings: {
         Row: {
           booking_date: string
@@ -437,11 +464,19 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      consume_head_invite_code: {
+        Args: { invite_code: string; user_uuid: string }
+        Returns: undefined
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
+        Returns: boolean
+      }
+      validate_head_invite_code: {
+        Args: { invite_code: string }
         Returns: boolean
       }
     }
