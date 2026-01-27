@@ -15,7 +15,8 @@ import {
   X,
   BarChart3,
   ClipboardList,
-  Building2
+  Building2,
+  Wrench
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
@@ -34,6 +35,7 @@ const guestNavItems = [
   { icon: BarChart3, label: "Food Poll", path: "/guest/food-poll" },
   { icon: Utensils, label: "Today's Menu", path: "/guest/menu" },
   { icon: MessageSquare, label: "Complaints", path: "/guest/complaints" },
+  { icon: Wrench, label: "Maintenance", path: "/guest/maintenance" },
   { icon: Search, label: "Lost & Found", path: "/guest/lost-found" },
   { icon: Receipt, label: "Bills", path: "/guest/bills" },
   { icon: Users, label: "Residents", path: "/guest/residents" },
@@ -44,6 +46,7 @@ const headNavItems = [
   { icon: ClipboardList, label: "Manage Menu", path: "/head/menu" },
   { icon: BarChart3, label: "Food Polls", path: "/head/polls" },
   { icon: MessageSquare, label: "Complaints", path: "/head/complaints" },
+  { icon: Wrench, label: "Maintenance", path: "/head/maintenance" },
   { icon: Search, label: "Lost & Found", path: "/head/lost-found" },
   { icon: Receipt, label: "Post Bills", path: "/head/bills" },
   { icon: Users, label: "Manage Guests", path: "/head/guests" },
